@@ -18,14 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 //TrigaServer.cpp
 #include "TrigaServer.h"
+#include "libFormatCSV.h"
 
 //Linha contendo o nome de todas as variáveis a serem enviadas (cabeçalho), no formato CSV
-const char CSV_HEADER[] = 
-"SPU_CHA_STATE;SPU_CHA_TIME_Y;SPU_CHA_TIME_Mo;SPU_CHA_TIME_D;SPU_CHA_TIME_H;SPU_CHA_TIME_Mi;SPU_CHA_TIME_S;SPU_CHA_TIME_MS;SPU_CHA_N_DATA_FP;SPU_CHA_T_DATA_FP;SPU_CHA_F1_DATA_FP;SPU_CHA_F2_DATA_FP;SPU_CHA_F3_DATA_FP;SPU_CHA_EMR_N_THRESHOLD;SPU_CHA_WRN_N_THRESHOLD;SPU_CHA_EMR_T_THRESHOLD;SPU_CHA_WRN_T_THRESHOLD;SPU_CHA_EMR_N;SPU_CHA_WRN_N;SPU_CHA_EMR_T;SPU_CHA_WRN_T;SPU_CHA_R1;SPU_CHA_R2;SPU_CHA_R3;SPU_CHA_RDY;SPU_CHA_TEST;SPU_CHA_XXXX;SPU_CHB_STATE;SPU_CHB_TIME_Y;SPU_CHB_TIME_Mo;SPU_CHB_TIME_D;SPU_CHB_TIME_H;SPU_CHB_TIME_Mi;SPU_CHB_TIME_S;SPU_CHB_TIME_MS;SPU_CHB_N_DATA_FP;SPU_CHB_T_DATA_FP;SPU_CHB_F1_DATA_FP;SPU_CHB_F2_DATA_FP;SPU_CHB_F3_DATA_FP;SPU_CHB_EMR_N_THRESHOLD;SPU_CHB_WRN_N_THRESHOLD;SPU_CHB_EMR_T_THRESHOLD;SPU_CHB_WRN_T_THRESHOLD;SPU_CHB_EMR_N;SPU_CHB_WRN_N;SPU_CHB_EMR_T;SPU_CHB_WRN_T;SPU_CHB_R1;SPU_CHB_R2;SPU_CHB_R3;SPU_CHB_RDY;SPU_CHB_TEST;SPU_CHB_XXXX;PLC_ORIG_STATE;PLC_ORIG_TIME_Y;PLC_ORIG_TIME_Mo;PLC_ORIG_TIME_D;PLC_ORIG_TIME_H;PLC_ORIG_TIME_Mi;PLC_ORIG_TIME_S;PLC_ORIG_TIME_MS;PLC_ORIG_BarraReg;PLC_ORIG_BarraCon;PLC_ORIG_BarraSeg;PLC_ORIG_CLogALog;PLC_ORIG_CLogALin;PLC_ORIG_CLogAPer;PLC_ORIG_CParALin;PLC_ORIG_CParALog;PLC_ORIG_CParAPer;PLC_ORIG_CLogARea;PLC_ORIG_CLin;PLC_ORIG_CPer;PLC_ORIG_SRadAre;PLC_ORIG_SRadEntPri;PLC_ORIG_SRadPoc;PLC_ORIG_SRadRes;PLC_ORIG_SRadSaiSec;PLC_ORIG_SRadAer;PLC_ORIG_SVasPri;PLC_CONV_STATE;PLC_CONV_TIME_Y;PLC_CONV_TIME_Mo;PLC_CONV_TIME_D;PLC_CONV_TIME_H;PLC_CONV_TIME_Mi;PLC_CONV_TIME_S;PLC_CONV_TIME_MS;PLC_CONV_BarraReg;PLC_CONV_BarraCon;PLC_CONV_BarraSeg;PLC_CONV_CLogALog;PLC_CONV_CLogALin;PLC_CONV_CLogAPer;PLC_CONV_CParALin;PLC_CONV_CParALog;PLC_CONV_CParAPer;PLC_CONV_CLogARea;PLC_CONV_CLin;PLC_CONV_CPer;PLC_CONV_SRadAre;PLC_CONV_SRadEntPri;PLC_CONV_SRadPoc;PLC_CONV_SRadRes;PLC_CONV_SRadSaiSec;PLC_CONV_SRadAer;PLC_CONV_SVasPri;\n";
+std::string headerStr = FormatCSV::generateCSVHeader();
 
 //Linha contendo os valores de todas variáveis, no formato CSV
-const char* CSV_TEMPLATE = 
-"%d;%d;%d;%d;%d;%d;%d;%d;%f;%f;%f;%f;%f;%f;%f;%f;%f;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%f;%f;%f;%f;%f;%f;%f;%f;%f;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%d;%d;%d;%d;%d;%d;%d;%d;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;%f;\n";
+std::string templateStr = FormatCSV::generateCSVTemplate();
 
 //Construtor da classe
 TrigaServer::TrigaServer(std::string spu_sp1,//Caminho da porta serial da SPU_CH_A
@@ -210,7 +209,7 @@ void TrigaServer::handleTCPClients(int clientSocket)
         ALL_DATA data;
 
         //Primeiramente envie o cabeçalho CSV pré-definido uma única vez
-        if(send(clientSocket, CSV_HEADER, sizeof(CSV_HEADER), 0) <= 0) return;
+        if(send(clientSocket, headerStr.c_str(), headerStr.length(), 0) <= 0) return;
 
         //Envie eternamente o conteúdo das variáveis
         while(true)
@@ -329,7 +328,65 @@ std::string TrigaServer::genString(ALL_DATA all_data)
     char buffer[8192];
 
     //Gera a string no formato do CSV_TEMPLATE com o conteúdo de cada variável
-    sprintf(buffer, CSV_TEMPLATE, all_data.SPU_CHA.STATE,
+    snprintf(buffer, sizeof(buffer), templateStr.c_str(),
+
+            plc_conv.STATE,
+            PLC_TIME.year,
+            PLC_TIME.month,
+            PLC_TIME.day,
+            PLC_TIME.hour,
+            PLC_TIME.minute,
+            PLC_TIME.second,
+            PLC_TIME.millisecond,
+            plc_conv.BarraReg,
+            plc_conv.BarraCon,
+            plc_conv.BarraSeg,
+            plc_conv.CLogALog,
+            plc_conv.CLogALin,
+            plc_conv.CLogAPer,
+            plc_conv.CParALin,
+            plc_conv.CParALog,
+            plc_conv.CParAPer,
+            plc_conv.CLogARea,
+            plc_conv.CLin,
+            plc_conv.CPer,
+            plc_conv.SRadAre,
+            plc_conv.SRadEntPri,
+            plc_conv.SRadPoc,
+            plc_conv.SRadRes,
+            plc_conv.SRadSaiSec,
+            plc_conv.SRadAer,
+            plc_conv.SVasPri,
+
+            all_data.PLC.STATE,
+            PLC_TIME.year,
+            PLC_TIME.month,
+            PLC_TIME.day,
+            PLC_TIME.hour,
+            PLC_TIME.minute,
+            PLC_TIME.second,
+            PLC_TIME.millisecond,
+            all_data.PLC.BarraReg,
+            all_data.PLC.BarraCon,
+            all_data.PLC.BarraSeg,
+            all_data.PLC.CLogALog,
+            all_data.PLC.CLogALin,
+            all_data.PLC.CLogAPer,
+            all_data.PLC.CParALin,
+            all_data.PLC.CParALog,
+            all_data.PLC.CParAPer,
+            all_data.PLC.CLogARea,
+            all_data.PLC.CLin,
+            all_data.PLC.CPer,
+            all_data.PLC.SRadAre,
+            all_data.PLC.SRadEntPri,
+            all_data.PLC.SRadPoc,
+            all_data.PLC.SRadRes,
+            all_data.PLC.SRadSaiSec,
+            all_data.PLC.SRadAer,
+            all_data.PLC.SVasPri,
+
+            all_data.SPU_CHA.STATE,
             SPU_CHA_TIME.year,
             SPU_CHA_TIME.month,
             SPU_CHA_TIME.day,
@@ -383,63 +440,7 @@ std::string TrigaServer::genString(ALL_DATA all_data)
             all_data.SPU_CHB.R3,
             all_data.SPU_CHB.RDY,
             all_data.SPU_CHB.TEST,
-            all_data.SPU_CHB.XXXX,
-            
-            all_data.PLC.STATE,
-            PLC_TIME.year,
-            PLC_TIME.month,
-            PLC_TIME.day,
-            PLC_TIME.hour,
-            PLC_TIME.minute,
-            PLC_TIME.second,
-            PLC_TIME.millisecond,
-            all_data.PLC.BarraReg,
-            all_data.PLC.BarraCon,
-            all_data.PLC.BarraSeg,
-            all_data.PLC.CLogALog,
-            all_data.PLC.CLogALin,
-            all_data.PLC.CLogAPer,
-            all_data.PLC.CParALin,
-            all_data.PLC.CParALog,
-            all_data.PLC.CParAPer,
-            all_data.PLC.CLogARea,
-            all_data.PLC.CLin,
-            all_data.PLC.CPer,
-            all_data.PLC.SRadAre,
-            all_data.PLC.SRadEntPri,
-            all_data.PLC.SRadPoc,
-            all_data.PLC.SRadRes,
-            all_data.PLC.SRadSaiSec,
-            all_data.PLC.SRadAer,
-            all_data.PLC.SVasPri,
-
-            plc_conv.STATE,
-            PLC_TIME.year,
-            PLC_TIME.month,
-            PLC_TIME.day,
-            PLC_TIME.hour,
-            PLC_TIME.minute,
-            PLC_TIME.second,
-            PLC_TIME.millisecond,
-            plc_conv.BarraReg,
-            plc_conv.BarraCon,
-            plc_conv.BarraSeg,
-            plc_conv.CLogALog,
-            plc_conv.CLogALin,
-            plc_conv.CLogAPer,
-            plc_conv.CParALin,
-            plc_conv.CParALog,
-            plc_conv.CParAPer,
-            plc_conv.CLogARea,
-            plc_conv.CLin,
-            plc_conv.CPer,
-            plc_conv.SRadAre,
-            plc_conv.SRadEntPri,
-            plc_conv.SRadPoc,
-            plc_conv.SRadRes,
-            plc_conv.SRadSaiSec,
-            plc_conv.SRadAer,
-            plc_conv.SVasPri
+            all_data.SPU_CHB.XXXX
     );
     return buffer;
 }
