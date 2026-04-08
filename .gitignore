@@ -1,7 +1,6 @@
 # Project
 .vscode/
 */.vscode/
-*/lib*
 */build/
 TrigaServer
 
