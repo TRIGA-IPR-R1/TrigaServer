@@ -35,6 +35,18 @@ make
 
 ## Auto-Compiling and build a PKG
 
+If you are using a Debian-based distribution, run:
+
+``` Bash
+git clone https://github.com/TRIGA-IPR-R1/TrigaServer.git
+cd TrigaServer
+cmake -B build
+cmake --build build -j$(nproc)
+cd build
+cpack -G DEB
+sudo apt install ./TrigaServer-*.deb
+```
+
 If you are using a Arch-based distribution, run:
 
 ``` Bash

@@ -53,14 +53,17 @@ set(CMAKE_C_STANDARD_INCLUDE_DIRECTORIES
     ${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES})
 
 set(TRIGASERVER_SRC ${PROJECT_SOURCE_DIR}/src/main.cpp
-                    ${PROJECT_SOURCE_DIR}/src/TrigaServer.cpp)
+                    ${PROJECT_SOURCE_DIR}/src/TrigaServer.cpp
+                    ${PROJECT_SOURCE_DIR}/src/libFormatCSV.cpp)
 
 add_executable(trigaserver ${TRIGASERVER_SRC})
 
 target_include_directories(
   trigaserver
-  PRIVATE ${PROJECT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS}
-          ${LibOpcTrigaPLC_INCLUDE_DIRS} ${LibModbusSystematomSPU_INCLUDE_DIRS})
+  PRIVATE ${PROJECT_SOURCE_DIR}/include
+          ${Boost_INCLUDE_DIRS}
+          ${LibOpcTrigaPLC_INCLUDE_DIRS}
+          ${LibModbusSystematomSPU_INCLUDE_DIRS})
 
 target_link_libraries(
   trigaserver
@@ -80,7 +83,7 @@ target_compile_options(
           ${SERIALPORT_CFLAGS_OTHER} ${JSONCPP_CFLAGS_OTHER}
           ${LibOpcTrigaPLC_CFLAGS} ${LibModbusSystematomSPU_CFLAGS})
 
-install(TARGETS trigaserver)
+install(TARGETS trigaserver DESTINATION bin)
 if("${DONT_INSTALL_CONF}" STREQUAL "")
   install(FILES ${PROJECT_SOURCE_DIR}/resources/trigaserver.conf
           DESTINATION /etc/)
@@ -99,3 +102,22 @@ if(SYSTEMD_FOUND)
   install(FILES ${CMAKE_BINARY_DIR}/trigaserver.service
           DESTINATION ${SYSTEMD_SERVICES_INSTALL_DIR})
 endif()
+
+# ==============================================================================
+# Configuração do CPack para geração do pacote .deb
+# ==============================================================================
+
+# Reaproveitando as variáveis já definidas no project()
+set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${PROJECT_HOMEPAGE_URL}")
+
+# Configurações específicas para Debian (.deb)
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Thalles Campagnani <thalles.campagnani@cdtn.br>")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)   # Descobre as dependências automaticamente!
+
+# Inclui o módulo CPack
+include(CPack)
