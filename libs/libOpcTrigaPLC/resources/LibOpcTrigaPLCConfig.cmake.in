@@ -1,0 +1,4 @@
+set(LibOpcTrigaPLC_INCLUDE_DIRS "@LibOpcTrigaPLC_INCLUDE_DIRS@")
+set(LibOpcTrigaPLC_LIBRARIES "@LibOpcTrigaPLC_LIBRARIES@")
+set(LibOpcTrigaPLC_CFLAGS "@CMAKE_C_FLAGS@")
+set(LibOpcTrigaPLC_CXXFLAGS "@CMAKE_CXX_FLAGS@")

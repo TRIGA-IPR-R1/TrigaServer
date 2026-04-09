@@ -1,7 +1,7 @@
 /*
 TrigaServer is a software for GNU operating system to get the real-time
 values of the Nuclear Reator Triga IPR-R1 and share in network.
-Copyright (C) 2023-2024 Thalles Campagnani
+Copyright (C) 2023-2026 Thalles Campagnani
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
