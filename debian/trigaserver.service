@@ -1,0 +1,15 @@
+[Unit]
+Description=TrigaServer
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/trigaserver.conf
+ExecStart=/usr/bin/trigaserver --SPU_CHA $SPU_CHA --SPU_CHB $SPU_CHB --PLC_ADRESS $PLC_ADRESS --PLC_CONV_FILE $PLC_CONV_FILE --PORT_CSV $PORT_CSV --INTERVAL_ERROR_SPU $INTERVAL_ERROR_SPU --INTERVAL_ERROR_PLC $INTERVAL_ERROR_PLC --INTERVAL_MONITOR $INTERVAL_MONITOR
+Restart=always
+User=trigauser
+Group=trigauser
+SupplementaryGroups=dialout
+
+[Install]
+WantedBy=multi-user.target

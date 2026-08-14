@@ -1,0 +1,13 @@
+Building this package clones open62541pp (and its open62541 dependency)
+during the CMake configure step via FetchContent. debian/rules turns
+off FETCHCONTENT_FULLY_DISCONNECTED (which dh would otherwise set) so
+that clone can happen. The build therefore needs network access, git
+and ca-certificates.
+
+Example:
+
+  sudo apt install build-essential debhelper devscripts
+  dpkg-buildpackage -us -uc -b
+
+If you use sbuild or pbuilder, allow network during the build.
+The resulting .deb is written to the parent directory of the source tree.

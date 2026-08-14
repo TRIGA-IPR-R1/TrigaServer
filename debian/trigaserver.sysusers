@@ -1,0 +1,2 @@
+u trigauser - "TrigaServer service user" /nonexistent /usr/sbin/nologin
+m trigauser dialout

@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --with installsysusers
+
+# dh_auto_configure passes -DFETCHCONTENT_FULLY_DISCONNECTED=ON, which
+# blocks libOpcTrigaPLC from cloning open62541pp. Force it back off so
+# the last -D on the cmake command line wins.
+override_dh_auto_configure:
+	dh_auto_configure -- -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
+
+override_dh_auto_install:
+	dh_auto_install
+	# Nested libraries and open62541* are linked statically into
+	# trigaserver; do not ship their headers, archives or CMake files.
+	rm -rf debian/trigaserver/usr/include
+	rm -rf debian/trigaserver/usr/lib/cmake
+	rm -rf debian/trigaserver/usr/lib/*/cmake
+	find debian/trigaserver -name '*.a' -delete
+	install -D -m 644 libs/libOpcTrigaPLC/resources/libOpcTrigaPLC.conf \
+		debian/trigaserver/etc/libOpcTrigaPLC.conf
+
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start

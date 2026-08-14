@@ -1,0 +1,5 @@
+trigaserver (0.0.2) unstable; urgency=medium
+
+  * Initial Debian packaging.
+
+ -- Thalles Campagnani <thalles.campagnani@cdtn.br>  Thu, 13 Aug 2026 23:37:24 -0300

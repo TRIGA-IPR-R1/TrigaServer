@@ -1,0 +1,8 @@
+.debhelper/
+debhelper-build-stamp
+files
+trigaserver/
+tmp/
+*.debhelper
+*.debhelper.log
+*.substvars

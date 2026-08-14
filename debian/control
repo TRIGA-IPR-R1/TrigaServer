@@ -1,0 +1,38 @@
+Source: trigaserver
+Section: science
+Priority: optional
+Maintainer: Thalles Campagnani <thalles.campagnani@cdtn.br>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake (>= 3.30),
+ pkg-config,
+ git,
+ ca-certificates,
+ python3,
+ libboost-dev,
+ libboost-system-dev,
+ libcxxopts-dev,
+ libmodbus-dev,
+ libserialport-dev,
+ libjsoncpp-dev
+Standards-Version: 4.7.2
+Homepage: https://github.com/TRIGA-IPR-R1/TrigaServer
+Vcs-Browser: https://github.com/TRIGA-IPR-R1/TrigaServer
+Vcs-Git: https://github.com/TRIGA-IPR-R1/TrigaServer.git
+
+Package: trigaserver
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends}
+Description: real-time data server for the TRIGA IPR-R1 reactor
+ TrigaServer reads real-time values from the TRIGA IPR-R1 nuclear
+ reactor (SystemAtom SPU via Modbus-RTU and the control-table PLC
+ via OPC UA) and shares them on the network as CSV over TCP.
+ .
+ A systemd unit is shipped but not enabled or started on install,
+ because the service talks to site-specific hardware. After
+ installing, review /etc/trigaserver.conf and then:
+ .
+   systemctl enable --now trigaserver
