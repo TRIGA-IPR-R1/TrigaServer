@@ -46,3 +46,8 @@ TrigaServer
 build
 result
 .cache
+
+# Sphinx
+docs/_build/
+.venv/
+docs/.venv/
