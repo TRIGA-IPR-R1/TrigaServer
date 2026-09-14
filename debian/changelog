@@ -1,5 +1,10 @@
 trigaserver (0.0.2) unstable; urgency=medium
 
   * Initial Debian packaging.
+  * Ship Sphinx HTML documentation in /usr/share/doc/trigaserver/html.
+  * Serve that documentation with a dedicated Apache instance on port
+    8080 (trigaserver-doc.service).
+  * Enable and start trigaserver.service on install.
+  * Install and enable trigaserver-doc.service via dh_installsystemd --name.
 
  -- Thalles Campagnani <thalles.campagnani@cdtn.br>  Thu, 13 Aug 2026 23:37:24 -0300

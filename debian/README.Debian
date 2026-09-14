@@ -1,0 +1,16 @@
+The trigaserver package ships two systemd units, both enabled and
+started on install:
+
+  trigaserver.service
+    Data acquisition daemon. Reads /etc/trigaserver.conf.
+
+  trigaserver-doc.service
+    Dedicated Apache instance (apache2-bin) serving the Sphinx HTML
+    manual on port 8080.
+
+    http://localhost:8080/
+    Config: /etc/trigaserver/apache-doc.conf
+    Logs:   /var/log/trigaserver-doc/
+
+This documentation server does not start Debian's apache2.service and
+does not bind port 80.

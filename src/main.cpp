@@ -31,7 +31,7 @@ void showVersion()
 
 void showLicense()
 {
-    std::cout << "TrigaServer      Copyright (C) 2023-2024      Thalles Campagnani" << std::endl;
+    std::cout << "TrigaServer      Copyright (C) 2023-2026      Thalles Campagnani" << std::endl;
     std::cout << "This    program    comes    with    ABSOLUTELY    NO   WARRANTY;" << std::endl;
     std::cout << "This is free software,    and you are welcome to redistribute it" << std::endl;
     std::cout << "under certain conditions; For more details read the file LICENSE" << std::endl;

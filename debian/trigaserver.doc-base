@@ -1,0 +1,10 @@
+Document: trigaserver
+Title: TrigaServer documentation
+Author: Thalles Campagnani
+Abstract: Manual of the real-time data server for the TRIGA IPR-R1
+ reactor: installation, configuration, CSV/TCP protocol and internals.
+Section: Science/Physics
+
+Format: HTML
+Index: /usr/share/doc/trigaserver/html/index.html
+Files: /usr/share/doc/trigaserver/html/*

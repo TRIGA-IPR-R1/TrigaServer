@@ -1,0 +1,13 @@
+/var/log/trigaserver-doc/*.log {
+	weekly
+	rotate 4
+	compress
+	delaycompress
+	missingok
+	notifempty
+	create 0640 www-data adm
+	sharedscripts
+	postrotate
+		systemctl reload trigaserver-doc.service > /dev/null 2>&1 || true
+	endscript
+}

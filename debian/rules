@@ -3,13 +3,40 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
-	dh $@ --with installsysusers
+	dh $@ --with installsysusers,sphinxdoc
 
 # dh_auto_configure passes -DFETCHCONTENT_FULLY_DISCONNECTED=ON, which
 # blocks libOpcTrigaPLC from cloning open62541pp. Force it back off so
 # the last -D on the cmake command line wins.
 override_dh_auto_configure:
 	dh_auto_configure -- -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
+
+# Use the system sphinx-build (not docs/.venv) so the package build is
+# reproducible from Build-Depends. Skip HTML when DEB_BUILD_OPTIONS=nodoc.
+override_dh_auto_build:
+	dh_auto_build
+ifeq (,$(filter nodoc,$(DEB_BUILD_OPTIONS)))
+	sphinx-build -b html -d debian/.doctrees docs docs/_build/html
+endif
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf docs/_build debian/.doctrees
+
+override_dh_installdocs:
+	dh_installdocs
+	# HTML is generated in override_dh_auto_build; skip if nodoc.
+	if [ -d docs/_build/html ]; then \
+		mkdir -p debian/trigaserver/usr/share/doc/trigaserver; \
+		cp -a docs/_build/html debian/trigaserver/usr/share/doc/trigaserver/; \
+	else \
+		rm -f debian/trigaserver/usr/share/doc-base/trigaserver; \
+	fi
+
+override_dh_sphinxdoc:
+ifeq (,$(filter nodoc,$(DEB_BUILD_OPTIONS)))
+	dh_sphinxdoc
+endif
 
 override_dh_auto_install:
 	dh_auto_install
@@ -21,6 +48,12 @@ override_dh_auto_install:
 	find debian/trigaserver -name '*.a' -delete
 	install -D -m 644 libs/libOpcTrigaPLC/resources/libOpcTrigaPLC.conf \
 		debian/trigaserver/etc/libOpcTrigaPLC.conf
+	install -D -m 644 resources/trigaserver-doc.apache.conf \
+		debian/trigaserver/etc/trigaserver/apache-doc.conf
 
+# debian/package.service is installed by the first call.
+# Extra units need --name so debian/package.NAME.service is shipped
+# and enabled/started on install.
 override_dh_installsystemd:
-	dh_installsystemd --no-enable --no-start
+	dh_installsystemd
+	dh_installsystemd --name=trigaserver-doc

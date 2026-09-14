@@ -4,6 +4,15 @@ off FETCHCONTENT_FULLY_DISCONNECTED (which dh would otherwise set) so
 that clone can happen. The build therefore needs network access, git
 and ca-certificates.
 
+Sphinx HTML documentation is built with the system python3-sphinx and
+python3-sphinx-rtd-theme (not docs/.venv) and installed under
+/usr/share/doc/trigaserver/html/. Pass nodoc in DEB_BUILD_OPTIONS to
+skip that step.
+
+trigaserver-doc.service starts a dedicated Apache (apache2-bin) on
+port 8080 serving that HTML. Both that unit and trigaserver.service
+are enabled and started on install.
+
 Example:
 
   sudo apt install build-essential debhelper devscripts

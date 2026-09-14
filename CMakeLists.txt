@@ -72,7 +72,11 @@ if(SYSTEMD_FOUND)
   configure_file(${PROJECT_SOURCE_DIR}/resources/trigaserver.service
                  ${CMAKE_BINARY_DIR}/trigaserver.service)
   install(FILES ${CMAKE_BINARY_DIR}/trigaserver.service
+                ${PROJECT_SOURCE_DIR}/resources/trigaserver-doc.service
           DESTINATION ${SYSTEMD_SERVICES_INSTALL_DIR})
+  install(FILES ${PROJECT_SOURCE_DIR}/resources/trigaserver-doc.apache.conf
+          DESTINATION /etc/trigaserver
+          RENAME apache-doc.conf)
 endif()
 
 # ==============================================================================
@@ -90,6 +94,7 @@ set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Thalles Campagnani <thalles.campagnani@cdtn.br>")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)   # Descobre as dependências automaticamente!
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "apache2-bin")
 
 # Inclui o módulo CPack
 include(CPack)

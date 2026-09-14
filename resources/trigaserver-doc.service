@@ -1,0 +1,20 @@
+[Unit]
+Description=TrigaServer HTML documentation (Apache on port 8080)
+Documentation=file:/usr/share/doc/trigaserver/html/index.html
+After=network.target
+
+[Service]
+Type=simple
+RuntimeDirectory=trigaserver-doc
+LogsDirectory=trigaserver-doc
+ExecStart=/usr/sbin/apache2 -f /etc/trigaserver/apache-doc.conf -DFOREGROUND
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2
+PrivateTmp=true
+ProtectHome=true
+# Same binary as Debian apache2; do not inherit its AppArmor profile.
+AppArmorProfile=unconfined
+
+[Install]
+WantedBy=multi-user.target
