@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 #include <stdexcept>
 #include <chrono>
+#include <string>
 #include <vector>
 
 struct PLC_DATA
@@ -94,12 +95,14 @@ struct CONV_LIN
   float y0 =  1;
   float x1 =  0;
   float y1 = -2;
+  std::string unit;
 };
 
 struct CONV_LOG
 {
   double a = -2;
   double b =  0;
+  std::string unit;
 };
 
 struct CONV_PER
@@ -108,6 +111,7 @@ struct CONV_PER
   double b = 0;     //Multiplicação
   double c = 0;     //Não usado ainda
   double d = 0;     //Não usado ainda
+  std::string unit;
 };
 
 struct CONV_VAZ //Dúvidas: https://github.com/TRIGA-IPR-R1/Vazao-Placa-Orificio
@@ -115,29 +119,77 @@ struct CONV_VAZ //Dúvidas: https://github.com/TRIGA-IPR-R1/Vazao-Placa-Orificio
   double a = 18.753;  //'x' e 'y':Conversão de mA para deltaP
   double b =-74.956;
   double c = 2.417;   //'z': Conversão de deltaP para vazão
+  std::string unit;
 };
 
 struct CONV_PLC {
-  CONV_LIN BarraReg;
-  CONV_LIN BarraCon;
-  CONV_LIN BarraSeg;
-  CONV_LIN CLogALin;
-  CONV_LOG CLogALog;
-  CONV_PER CLogAPer;
-  CONV_LIN CParALin;
-  CONV_LOG CParALog;
-  CONV_PER CParAPer;
-  CONV_LIN CLogARea;
-  CONV_LIN CLin;
-  CONV_LIN CPer;
-  CONV_LOG SRadAre;
-  CONV_LOG SRadEntPri;
-  CONV_LOG SRadPoc;
-  CONV_LOG SRadRes;
-  CONV_LOG SRadSaiSec;
-  CONV_LOG SRadAer;
-  CONV_VAZ SVasPri;
+  CONV_LIN BarraReg{.unit = ""};
+  CONV_LIN BarraCon{.unit = ""};
+  CONV_LIN BarraSeg{.unit = ""};
+  CONV_LIN CLogALin{.unit = "W"};
+  CONV_LOG CLogALog{.unit = "W"};
+  CONV_PER CLogAPer{.unit = "s"};
+  CONV_LIN CParALin{.unit = "W"};
+  CONV_LOG CParALog{.unit = "W"};
+  CONV_PER CParAPer{.unit = "s"};
+  CONV_LIN CLogARea{.unit = "pcm"};
+  CONV_LIN CLin{.unit = "W"};
+  CONV_LIN CPer{.unit = "%"};
+  CONV_LOG SRadAre{.unit = "mRem/h"};
+  CONV_LOG SRadEntPri{.unit = "mRem/h"};
+  CONV_LOG SRadPoc{.unit = "mRem/h"};
+  CONV_LOG SRadRes{.unit = "mRem/h"};
+  CONV_LOG SRadSaiSec{.unit = "mRem/h"};
+  CONV_LOG SRadAer{.unit = "mRem/h"};
+  CONV_VAZ SVasPri{.unit = "m3/h"};
 };
+
+inline std::string convUnit(const CONV_PLC& conv, const std::string& field)
+{
+  if (field == "BarraReg")   return conv.BarraReg.unit;
+  if (field == "BarraCon")   return conv.BarraCon.unit;
+  if (field == "BarraSeg")   return conv.BarraSeg.unit;
+  if (field == "CLogALin")   return conv.CLogALin.unit;
+  if (field == "CLogALog")   return conv.CLogALog.unit;
+  if (field == "CLogAPer")   return conv.CLogAPer.unit;
+  if (field == "CParALin")   return conv.CParALin.unit;
+  if (field == "CParALog")   return conv.CParALog.unit;
+  if (field == "CParAPer")   return conv.CParAPer.unit;
+  if (field == "CLogARea")   return conv.CLogARea.unit;
+  if (field == "CLin")       return conv.CLin.unit;
+  if (field == "CPer")       return conv.CPer.unit;
+  if (field == "SRadAre")    return conv.SRadAre.unit;
+  if (field == "SRadEntPri") return conv.SRadEntPri.unit;
+  if (field == "SRadPoc")    return conv.SRadPoc.unit;
+  if (field == "SRadRes")    return conv.SRadRes.unit;
+  if (field == "SRadSaiSec") return conv.SRadSaiSec.unit;
+  if (field == "SRadAer")    return conv.SRadAer.unit;
+  if (field == "SVasPri")    return conv.SVasPri.unit;
+  return "";
+}
+
+inline void setConvUnit(CONV_PLC& conv, const std::string& field, const std::string& unit)
+{
+  if (field == "BarraReg")        conv.BarraReg.unit = unit;
+  else if (field == "BarraCon")   conv.BarraCon.unit = unit;
+  else if (field == "BarraSeg")   conv.BarraSeg.unit = unit;
+  else if (field == "CLogALin")   conv.CLogALin.unit = unit;
+  else if (field == "CLogALog")   conv.CLogALog.unit = unit;
+  else if (field == "CLogAPer")   conv.CLogAPer.unit = unit;
+  else if (field == "CParALin")   conv.CParALin.unit = unit;
+  else if (field == "CParALog")   conv.CParALog.unit = unit;
+  else if (field == "CParAPer")   conv.CParAPer.unit = unit;
+  else if (field == "CLogARea")   conv.CLogARea.unit = unit;
+  else if (field == "CLin")       conv.CLin.unit = unit;
+  else if (field == "CPer")       conv.CPer.unit = unit;
+  else if (field == "SRadAre")    conv.SRadAre.unit = unit;
+  else if (field == "SRadEntPri") conv.SRadEntPri.unit = unit;
+  else if (field == "SRadPoc")    conv.SRadPoc.unit = unit;
+  else if (field == "SRadRes")    conv.SRadRes.unit = unit;
+  else if (field == "SRadSaiSec") conv.SRadSaiSec.unit = unit;
+  else if (field == "SRadAer")    conv.SRadAer.unit = unit;
+  else if (field == "SVasPri")    conv.SVasPri.unit = unit;
+}
 
 void libOpcTrigaPLC_license();
 

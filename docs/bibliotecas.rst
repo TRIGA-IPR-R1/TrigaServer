@@ -111,10 +111,13 @@ Namespace local em ``include/libFormatCSV.h`` /
 .. code-block:: cpp
 
    namespace FormatCSV {
-       std::string generateCSVHeader();
+       std::string generateCSVHeader(const CONV_PLC& conv);
        std::string generateCSVTemplate();
    }
 
 As duas funções percorrem ``PLC_DATA_MATRIX`` (duas vezes: ``CONV`` e
 ``ORIG``) e ``SPU_DATA_MATRIX`` (``ChA`` e ``ChB``), na mesma ordem
-usada por ``TrigaServer::genString()``.
+usada por ``TrigaServer::genString()``. O cabeçalho inclui
+``[unidade]``: CONV lê ``conv.*.unit`` (arquivo de calibração); ORIG
+analógico usa ``mV`` (vazão primária ``mA``); a SPU usa a terceira
+coluna da matriz.

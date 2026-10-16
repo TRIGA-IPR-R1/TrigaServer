@@ -1,3 +1,30 @@
+trigaserver (0.0.6) unstable; urgency=medium
+
+  * PLC_ORIG analog units are mV; primary flow (SVasPri) original is mA.
+
+ -- Thalles Campagnani <thalles.campagnani@cdtn.br>  Thu, 15 Oct 2026 22:15:00 -0300
+
+trigaserver (0.0.5) unstable; urgency=medium
+
+  * Reopen the OPC UA session on PLC read errors (STATE 1), not only on
+    disconnect. Drop the previous session before connect to avoid
+    BadTooManySessions after restarts.
+
+ -- Thalles Campagnani <thalles.campagnani@cdtn.br>  Thu, 15 Oct 2026 21:10:00 -0300
+
+trigaserver (0.0.4) unstable; urgency=medium
+
+  * Reuse TCP port 1234 on restart (SO_REUSEADDR).
+
+ -- Thalles Campagnani <thalles.campagnani@cdtn.br>  Thu, 15 Oct 2026 19:15:00 -0300
+
+trigaserver (0.0.3) unstable; urgency=medium
+
+  * CSV header includes engineering units from the PLC calibration file
+    (Name[unit]). Converted rods are dimensionless; ORIG analogs stay in V.
+
+ -- Thalles Campagnani <thalles.campagnani@cdtn.br>  Thu, 15 Oct 2026 17:10:00 -0300
+
 trigaserver (0.0.2) unstable; urgency=medium
 
   * Initial Debian packaging.

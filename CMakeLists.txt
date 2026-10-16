@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(
   TrigaServer
-  VERSION 0.0.2
+  VERSION 0.0.4
   DESCRIPTION "Get the real-time values of the Nuclear Reator Triga IPR-R1 and share in network."
   HOMEPAGE_URL "https://github.com/TRIGA-IPR-R1/TrigaServer"
   LANGUAGES CXX)

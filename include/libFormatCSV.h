@@ -23,13 +23,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <string>
 
+struct CONV_PLC;
+
 namespace FormatCSV {
 
     /**
-     * @brief Gera o cabeçalho completo do arquivo CSV, substituindo os marcadores de canal e tipo dinamicamente.
+     * @brief Gera o cabeçalho CSV com nome[unidade] em cada coluna.
+     *        CONV usa as unidades do arquivo de calibração; ORIG analógico
+     *        sai em mV (vazão primária em mA).
      * @return std::string contendo a linha de cabeçalho terminada em \n
      */
-    std::string generateCSVHeader();
+    std::string generateCSVHeader(const CONV_PLC& conv);
 
     /**
      * @brief Gera o template de formatação do CSV (apenas os tipos de dados), seguindo a mesma ordem do cabeçalho.

@@ -20,9 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "TrigaServer.h"
 #include "libFormatCSV.h"
 
-//Linha contendo o nome de todas as variáveis a serem enviadas (cabeçalho), no formato CSV
-std::string headerStr = FormatCSV::generateCSVHeader();
-
 //Linha contendo os valores de todas variáveis, no formato CSV
 std::string templateStr = FormatCSV::generateCSVTemplate();
 
@@ -41,6 +38,7 @@ TrigaServer::TrigaServer(std::string spu_sp1,//Caminho da porta serial da SPU_CH
     adressSpuB = spu_sp2;//Salva enderço da SPU_CH_B para uso posterior
     errorIntervalSPU = error_interval_plc;
     errorIntervalPLC = error_interval_spu;
+    csvHeader = FormatCSV::generateCSVHeader(plc.fatorConv);
     startReadThreads();
 }
 
@@ -126,6 +124,9 @@ void TrigaServer::createServer(int port)
         return;
     }
 
+    int reuse = 1;
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
     //Configuração do Endereço do Servidor
     memset(&serverAddr, 0, sizeof(serverAddr));//Zera a estrutura
     serverAddr.sin_family = AF_INET;//Família de endereços IPv4
@@ -208,8 +209,8 @@ void TrigaServer::handleTCPClients(int clientSocket)
         auto data_local_plc    = std::shared_ptr <PLC_DATA> (new PLC_DATA);
         ALL_DATA data;
 
-        //Primeiramente envie o cabeçalho CSV pré-definido uma única vez
-        if(send(clientSocket, headerStr.c_str(), headerStr.length(), 0) <= 0) return;
+        //Primeiramente envie o cabeçalho CSV (nome[unidade]) uma única vez
+        if(send(clientSocket, csvHeader.c_str(), csvHeader.length(), 0) <= 0) return;
 
         //Envie eternamente o conteúdo das variáveis
         while(true)
@@ -288,8 +289,10 @@ void TrigaServer::readOpcTCP(libOpcTrigaPLC& plc)
         if(data_local->STATE) //Caso STATE for diferente de 0
         {
             std::this_thread::sleep_for(std::chrono::seconds(errorIntervalPLC));
-            if(data_local->STATE==2) //Diferente do readModbusRTU, só tente reconectar ao PLC caso o erro seja "desconexão"
-                plc.tryConnect();
+            // STATE 1 (conectado, leitura recusada — ex. BadTooManySessions)
+            // também precisa reabrir a sessão; só STATE 2 deixava o cliente
+            // preso para sempre contra um CLP que ainda responde no TCP.
+            plc.tryConnect();
         }
     }
 }

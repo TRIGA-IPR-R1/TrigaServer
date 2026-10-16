@@ -40,31 +40,58 @@ namespace FormatCSV {
             snprintf(buffer, sizeof(buffer), format.c_str(), type);
             return std::string(buffer);
         }
+
+        std::string fieldFromFormat(const std::string& format)
+        {
+            const std::string marker = "%s_";
+            auto pos = format.find(marker);
+            if (pos == std::string::npos) return "";
+            return format.substr(pos + marker.size());
+        }
+
+        std::string withUnit(const std::string& name, const std::string& unit)
+        {
+            return name + "[" + unit + "]";
+        }
+
+        std::string plcHeaderUnit(const CONV_PLC& conv, const std::string& field, bool orig)
+        {
+            if (field == "STATE") return "estado";
+            if (field.rfind("TIME_", 0) == 0) return "data/hora";
+            if (orig) return field == "SVasPri" ? "mA" : "mV";
+            return convUnit(conv, field);
+        }
     }
 
     // --- Funções Públicas ---
 
-    std::string generateCSVHeader() {
+    std::string generateCSVHeader(const CONV_PLC& conv) {
         std::string header = "";
 
-        // 1. PLC_CONV
+        // 1. PLC_CONV — unidades do arquivo de calibração
         for (const auto& row : PLC_DATA_MATRIX) {
-            header += formatPLC(row[0], "CONV") + ";";
+            const std::string field = fieldFromFormat(row[0]);
+            header += withUnit(formatPLC(row[0], "CONV"),
+                               plcHeaderUnit(conv, field, false)) + ";";
         }
         
-        // 2. PLC_ORIG
+        // 2. PLC_ORIG — leitura bruta (analógico em mV; vazão em mA)
         for (const auto& row : PLC_DATA_MATRIX) {
-            header += formatPLC(row[0], "ORIG") + ";";
+            const std::string field = fieldFromFormat(row[0]);
+            header += withUnit(formatPLC(row[0], "ORIG"),
+                               plcHeaderUnit(conv, field, true)) + ";";
         }
         
         // 3. SPU_CHA
         for (const auto& row : SPU_DATA_MATRIX) {
-            header += formatSPU(row[0], "ChA") + ";";
+            const std::string unit = row.size() > 2 ? row[2] : "";
+            header += withUnit(formatSPU(row[0], "ChA"), unit) + ";";
         }
         
         // 4. SPU_CHB
         for (const auto& row : SPU_DATA_MATRIX) {
-            header += formatSPU(row[0], "ChB") + ";";
+            const std::string unit = row.size() > 2 ? row[2] : "";
+            header += withUnit(formatSPU(row[0], "ChB"), unit) + ";";
         }
 
         header += "\n";

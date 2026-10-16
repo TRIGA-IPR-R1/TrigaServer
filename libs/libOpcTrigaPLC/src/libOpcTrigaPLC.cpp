@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <open62541pp/open62541pp.h>
 #include <fstream>
 #include <limits>
+#include <sstream>
 
 struct libOpcTrigaPLC_private {
     opcua::Client client;
@@ -40,6 +41,19 @@ void libOpcTrigaPLC_license()
 
 bool libOpcTrigaPLC::tryConnect()
 {
+    // Encerrar a sessão anterior antes de abrir outra. Sem isso, um
+    // restart rápido ou um STATE=1 (BadTooManySessions) deixa sessões
+    // fantasmas no CLP até o timeout do servidor OPC.
+    try
+    {
+        if (this->_p->client.isConnected())
+            this->_p->client.disconnect();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << stdErrorMsg("tryConnect()", "Erro ao encerrar sessão OPC anterior", e.what());
+    }
+
     try
     {
         this->_p->client.connect(this->_p->serverAddress);
@@ -245,7 +259,19 @@ CONV_PLC libOpcTrigaPLC::readFatorConvFile(std::string filename)
             std::istringstream iss(line);
             std::string key;
             std::string igual, valueS;
-            iss >> key >> igual >> valueS;
+            iss >> key >> igual;
+            if (key == "unit")
+            {
+                std::getline(iss, valueS);
+                valueS.erase(0, valueS.find_first_not_of(" \t"));
+                if (!valueS.empty())
+                    valueS.erase(valueS.find_last_not_of(" \t") + 1);
+                else
+                    valueS.clear();
+                setConvUnit(fatorConv, kind, valueS);
+                continue;
+            }
+            iss >> valueS;
             double value = std::stod(valueS);
 
             if (kind == "BarraReg") 

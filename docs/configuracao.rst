@@ -49,8 +49,14 @@ Arquivo de conversão do CLP
 Caminho típico: ``/etc/libOpcTrigaPLC.conf`` (cópia de
 ``libs/libOpcTrigaPLC/resources/libOpcTrigaPLC.conf``).
 
-Cada seção corresponde a uma grandeza. O tipo de conversão depende do
-sensor:
+Cada seção corresponde a uma grandeza. Além dos fatores numéricos, a
+chave ``unit`` declara a unidade de engenharia para a qual o valor
+**convertido** está calibrado (por exemplo ``pcm``, ``W``, ``mRem/h``).
+Deixe ``unit =`` vazio para grandeza adimensional (barras). Sem a chave,
+a biblioteca usa o padrão interno da seção. O CSV publica essa unidade
+no cabeçalho; o TrigaViewer só herda, não redefine.
+
+O tipo de conversão depende do sensor:
 
 .. list-table::
    :header-rows: 1
@@ -59,6 +65,9 @@ sensor:
    * - Tipo
      - Parâmetros
      - Uso
+   * - Todas
+     - ``unit``
+     - Unidade do valor CONV (vazia = adimensional).
    * - Linear (``CONV_LIN``)
      - ``x0``, ``x1``, ``y0``, ``y1``
      - Barras, canal linear, aquisições lineares, canal percentual.

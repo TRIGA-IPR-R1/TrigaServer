@@ -87,6 +87,9 @@ class TrigaServer
         int errorIntervalSPU;
         int errorIntervalPLC;
 
+        // Cabeçalho CSV com nome[unidade], gerado após ler o arquivo de calibração.
+        std::string csvHeader;
+
         //Ponteiros inteligentes globais
         std::atomic<std::shared_ptr<SPU_DATA>> data_global_spuCh[2] = {std::make_shared<SPU_DATA>(),
                                                                        std::make_shared<SPU_DATA>()};

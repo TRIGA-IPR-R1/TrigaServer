@@ -141,15 +141,22 @@ Além de estado e tempo, cada canal (ChA / ChB) contém:
 Nomes no cabeçalho
 ------------------
 
-O cabeçalho é gerado por ``FormatCSV::generateCSVHeader()``. Exemplos
-de nomes:
+O cabeçalho é gerado por ``FormatCSV::generateCSVHeader(conv)`` no
+formato ``Nome[unidade]``. A unidade de ``PLC_CONV_*`` vem do arquivo
+de calibração (``unit =`` em ``libOpcTrigaPLC.conf``); ``PLC_ORIG_*``
+analógico sai em ``[mV]`` (vazão primária em ``[mA]``); barras
+convertidas adimensionais saem ``[]``. Exemplos:
 
-* ``PLC_CONV_CLogALin``
-* ``PLC_ORIG_BarraReg``
-* ``SPU_ChA_N_DATA_FP``
-* ``SPU_ChB_STATE``
+* ``PLC_CONV_CLogALin[W]``
+* ``PLC_CONV_CLogARea[pcm]``
+* ``PLC_CONV_BarraReg[]``
+* ``PLC_ORIG_BarraReg[mV]``
+* ``PLC_ORIG_SVasPri[mA]``
+* ``SPU_ChA_N_DATA_FP[W]``
+* ``SPU_ChB_STATE[estado]``
 
-Inteiros saem com ``%d``; pontos flutuantes com ``%f``.
+Inteiros saem com ``%d``; pontos flutuantes com ``%f``. Clientes antigos
+que não esperam ``[unidade]`` precisam ignorar o sufixo.
 
 Cliente de teste com netcat
 ---------------------------

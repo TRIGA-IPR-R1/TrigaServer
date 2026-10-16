@@ -45,8 +45,7 @@ Threads
        ``errorIntervalSPU`` segundos e chama ``tryConnect()``.
    * - ``readOpcTCP``
      - Lê ``get_all()`` do CLP e grava em ``data_global_plc``. Em erro,
-       espera ``errorIntervalPLC``. Só reconecta se ``STATE == 2``
-       (desconexão).
+       espera ``errorIntervalPLC`` e reconecta (``STATE`` 1 ou 2).
    * - ``createServer``
      - ``bind`` / ``listen`` / ``accept`` na porta CSV. Para cada
        cliente, lança ``handleTCPClients``.
@@ -77,10 +76,11 @@ aquisição.
 Geração do CSV
 --------------
 
-``FormatCSV::generateCSVHeader()`` e ``generateCSVTemplate()`` constroem
-cabeçalho e string de ``printf`` a partir das matrizes
-``PLC_DATA_MATRIX`` e ``SPU_DATA_MATRIX`` (definidas nos headers das
-bibliotecas). ``TrigaServer::genString()``:
+``FormatCSV::generateCSVHeader(plc.fatorConv)`` e
+``generateCSVTemplate()`` constroem cabeçalho (com ``nome[unidade]``) e
+string de ``printf`` a partir das matrizes ``PLC_DATA_MATRIX`` e
+``SPU_DATA_MATRIX`` e das unidades lidas do arquivo de calibração.
+``TrigaServer::genString()``:
 
 1. decodifica os três ``time_point`` em ``int_TIME``;
 2. converte o bloco PLC com ``plc.convAllData()``;
