@@ -1,3 +1,10 @@
+trigaserver (0.0.7) unstable; urgency=medium
+
+  * Close the client socket when a CSV session ends, so disconnects no
+    longer leak FDs and stall accept() in EMFILE.
+
+ -- Thalles Campagnani <thalles.campagnani@cdtn.br>  Thu, 15 Oct 2026 22:55:00 -0300
+
 trigaserver (0.0.6) unstable; urgency=medium
 
   * PLC_ORIG analog units are mV; primary flow (SVasPri) original is mA.

@@ -20,6 +20,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "TrigaServer.h"
 #include "libFormatCSV.h"
 
+#include <cerrno>
+#include <cstring>
+#include <ctime>
+#include <stdexcept>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+
 //Linha contendo os valores de todas variáveis, no formato CSV
 std::string templateStr = FormatCSV::generateCSVTemplate();
 
@@ -153,7 +161,11 @@ void TrigaServer::createServer(int port)
         //Se accept() por qualquer motivo falhar, reset o loop (não crie nova thread)
         if (clientSocket < 0)
         {
-            std::cerr << "[startServer] Error on accept" << std::endl;
+            std::cerr << "[startServer] Error on accept: " << std::strerror(errno) << std::endl;
+            // Sem close() no cliente, os FDs vazam e o accept() entra em
+            // EMFILE num loop apertado — o servidor parece travado.
+            if (errno == EMFILE || errno == ENFILE)
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
             continue;
         }
 
@@ -186,57 +198,82 @@ void TrigaServer::handleTCPClients(int clientSocket)
         return;
     }
 
-    //Caso algum digito não numero for recebido, encerre o método
-    for (int i = 0; i < n-1; ++i) if (!isdigit(buffer[i])) 
+    for (int i = 0; i < n; ++i)
     {
-        std::cerr << "[handleTCPClients] Error: client sent a not number" << std::endl;
+        unsigned char c = static_cast<unsigned char>(buffer[i]);
+        if (c == '\n' || c == '\r' || c == '\0') continue;
+        if (!isdigit(c))
+        {
+            std::cerr << "[handleTCPClients] Error: client sent a not number" << std::endl;
+            close(clientSocket);
+            return;
+        }
+    }
+
+    int interval = 0;
+    try
+    {
+        interval = std::stoi(std::string(buffer, static_cast<size_t>(n)));
+    }
+    catch (const std::exception&)
+    {
+        std::cerr << "[handleTCPClients] Error: invalid interval" << std::endl;
         close(clientSocket);
         return;
     }
+    if (interval < 1) interval = 1;
 
-    //Converte os dados recebidos (string) em um número inteiro
-    int interval = std::stoi(std::string(buffer, n));
+    // send() bloqueante sem timeout prende a thread se o cliente parar de ler.
+    timeval sendTimeout{};
+    sendTimeout.tv_sec = 2;
+    setsockopt(clientSocket, SOL_SOCKET, SO_SNDTIMEO, &sendTimeout, sizeof(sendTimeout));
 
-    //std::cout << "[handleTCPClients] Received interval: " << interval << "ms" << std::endl;
-
-
-    // Cria uma nova thread desvinculada para lidar com a comunicação contínua
     std::thread([this, interval, clientSocket]()
     {
-        //Cria ponteiros compartilhados para estruturas de dados locais
-        auto data_local_spuChA = std::shared_ptr <SPU_DATA> (new SPU_DATA);
-        auto data_local_spuChB = std::shared_ptr <SPU_DATA> (new SPU_DATA);
-        auto data_local_plc    = std::shared_ptr <PLC_DATA> (new PLC_DATA);
-        ALL_DATA data;
+        struct SocketGuard {
+            int fd;
+            ~SocketGuard() { if (fd >= 0) close(fd); }
+        } sock{clientSocket};
 
-        //Primeiramente envie o cabeçalho CSV (nome[unidade]) uma única vez
-        if(send(clientSocket, csvHeader.c_str(), csvHeader.length(), 0) <= 0) return;
-
-        //Envie eternamente o conteúdo das variáveis
-        while(true)
+        // Exceção nesta thread desvinculada chamaria std::terminate() e
+        // derrubaria o processo inteiro: daí em diante toda conexão nova
+        // seria recusada (o sintoma aleatório no 3º ou no 150º cliente).
+        try
         {
-            //Carregue de forma segura o conteúdo dos ponteiros
-            //Objetivo:
-            //      - Obter uma cópia local thread-safe dos dados globais
-            //      - Permitir processamento local sem bloquear outras threads
-            data_local_spuChA = data_global_spuCh[0].load();
-            data_local_spuChB = data_global_spuCh[1].load();
-            data_local_plc    = data_global_plc.load();
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+            auto data_local_spuChA = std::shared_ptr <SPU_DATA> (new SPU_DATA);
+            auto data_local_spuChB = std::shared_ptr <SPU_DATA> (new SPU_DATA);
+            auto data_local_plc    = std::shared_ptr <PLC_DATA> (new PLC_DATA);
+            ALL_DATA data;
 
-            //Salva na estrutura ALL_DATA
-            //ALL_DATA era útil no contexto de enviar dados no formato RAW
-            data.SPU_CHA = *data_local_spuChA;
-            data.SPU_CHB = *data_local_spuChB;
-            data.PLC     = *data_local_plc;
-            
-            //Gere a string com contéudo das variáveis no formato CSV
-            std::string      buffer = genString(data);
-            
-            //Envie o conteudo de buffer na quantidade identificada por length()
-            if(send(clientSocket, buffer.c_str(), buffer.length(), 0) <= 0) break;
+            if (send(sock.fd, csvHeader.c_str(), csvHeader.length(), MSG_NOSIGNAL) <= 0)
+                return;
 
-            //Dorme pelo intervalo especificado
-            std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+            while (true)
+            {
+                data_local_spuChA = data_global_spuCh[0].load();
+                data_local_spuChB = data_global_spuCh[1].load();
+                data_local_plc    = data_global_plc.load();
+                if (!data_local_spuChA || !data_local_spuChB || !data_local_plc)
+                    break;
+
+                data.SPU_CHA = *data_local_spuChA;
+                data.SPU_CHB = *data_local_spuChB;
+                data.PLC     = *data_local_plc;
+
+                std::string line = genString(data);
+
+                if (send(sock.fd, line.c_str(), line.length(), MSG_NOSIGNAL) <= 0)
+                    break;
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[handleTCPClients] " << e.what() << std::endl;
         }
     }).detach();
 }
@@ -301,7 +338,9 @@ void TrigaServer::readOpcTCP(libOpcTrigaPLC& plc)
 int_TIME TrigaServer::decodeTime(std::chrono::system_clock::time_point t)
 {
     auto now = std::chrono::system_clock::to_time_t(t);
-    std::tm tm_local = *std::localtime(&now);
+    std::tm tm_local{};
+    if (!localtime_r(&now, &tm_local))
+        tm_local = std::tm{};
 
     int_TIME time;
     time.year = tm_local.tm_year + 1900; // Ano: tm_year é anos desde 1900
