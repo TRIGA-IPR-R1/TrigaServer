@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "libFormatCSV.h"
 
 #include <cerrno>
+#include <cstdio>
 #include <cstring>
 #include <ctime>
 #include <stdexcept>
@@ -28,8 +29,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <sys/socket.h>
 #include <sys/time.h>
 
-//Linha contendo os valores de todas variáveis, no formato CSV
-std::string templateStr = FormatCSV::generateCSVTemplate();
+//Linha contendo PLC + SPU, no formato CSV (PJ-I é concatenado em genString)
+std::string templateStr    = FormatCSV::generatePlcCSVTemplate()
+                           + FormatCSV::generatePlcCSVTemplate()
+                           + FormatCSV::generateSpuCSVTemplate()
+                           + FormatCSV::generateSpuCSVTemplate();
+std::string pjiTemplateStr = FormatCSV::generatePjiCSVTemplate();
 
 //Construtor da classe
 TrigaServer::TrigaServer(std::string spu_sp1,//Caminho da porta serial da SPU_CH_A
@@ -37,15 +42,22 @@ TrigaServer::TrigaServer(std::string spu_sp1,//Caminho da porta serial da SPU_CH
                          std::string clp_adress, //IP do CLP
                          std::string clp_conv_file,//Caminho do arquivo de conversão das variáveis do CLP
                          int error_interval_plc,//Valor do intervalo de reconexão do CLP em caso de erro
-                         int error_interval_spu)//Valor do intervalo de reconexão da SPU em caso de erro
+                         int error_interval_spu,//Valor do intervalo de reconexão da SPU em caso de erro
+                         std::array<std::string, PJI_COUNT> pji_ports,
+                         std::array<int, PJI_COUNT> pji_addrs,
+                         int error_interval_pji)
                         :spuChA(spu_sp1),//Cria objeto do tipo libModbusSystematomSPU para SPU_CH_A passando o caminho spu_sp1
                          spuChB(spu_sp2),//Cria objeto do tipo libModbusSystematomSPU para SPU_CH_B passando o caminho spu_sp2
                          plc(clp_adress,clp_conv_file)//Cria objeto do tipo libOpcTrigaPLC passando IP e caminho do arquivo de conversão
 {
     adressSpuA = spu_sp1;//Salva enderço da SPU_CH_A para uso posterior
     adressSpuB = spu_sp2;//Salva enderço da SPU_CH_B para uso posterior
+    adressPji = pji_ports;
     errorIntervalSPU = error_interval_plc;
     errorIntervalPLC = error_interval_spu;
+    errorIntervalPJI = error_interval_pji;
+    for (int i = 0; i < PJI_COUNT; ++i)
+        pjiDev[i] = std::make_unique<libRs232EcilPJI>(pji_ports[i], pji_addrs[i]);
     csvHeader = FormatCSV::generateCSVHeader(plc.fatorConv);
     startReadThreads();
 }
@@ -61,9 +73,14 @@ std::vector<int> TrigaServer::state()
     auto localSpuB = data_global_spuCh[1].load();
     auto localPlc = data_global_plc.load();
 
-    return {localSpuA.get()->STATE,
-            localSpuB.get()->STATE,
-            localPlc.get()->STATE};
+    std::vector<int> s = {localSpuA.get()->STATE,
+                          localSpuB.get()->STATE,
+                          localPlc.get()->STATE};
+    for (int i = 0; i < PJI_COUNT; ++i) {
+        auto localPji = data_global_pji[i].load();
+        s.push_back(localPji ? localPji->STATE : 2);
+    }
+    return s;
 }
 
 //Método para verificar leitura de potência e periodo de cada hardware (usado para log)
@@ -82,6 +99,17 @@ std::vector<float> TrigaServer::readPP()
             localPlc.get()->CLogAPer};
 }
 
+std::vector<float> TrigaServer::readPJI()
+{
+    std::vector<float> pv;
+    pv.reserve(PJI_COUNT);
+    for (int i = 0; i < PJI_COUNT; ++i) {
+        auto localPji = data_global_pji[i].load();
+        pv.push_back(localPji ? localPji->PV : -123456);
+    }
+    return pv;
+}
+
 // Método para Threads de leitura dos hardware (aquisição de dados)
 void TrigaServer::startReadThreads()
 {
@@ -89,6 +117,9 @@ void TrigaServer::startReadThreads()
     std::thread spuChAThread(&TrigaServer::readModbusRTU, this, std::ref(spuChA));
     std::thread spuChBThread(&TrigaServer::readModbusRTU, this, std::ref(spuChB));
     std::thread plcThread   (&TrigaServer::readOpcTCP,    this, std::ref(plc));
+    std::thread pjiThread[PJI_COUNT];
+    for (int i = 0; i < PJI_COUNT; ++i)
+        pjiThread[i] = std::thread(&TrigaServer::readRs232PJI, this, i);
 
     //Teste de erro de concorrência de memória
     #ifdef TestMax
@@ -102,6 +133,8 @@ void TrigaServer::startReadThreads()
     spuChAThread.detach();
     spuChBThread.detach();
     plcThread.detach();
+    for (int i = 0; i < PJI_COUNT; ++i)
+        pjiThread[i].detach();
 }
 
 //Método que inicia servidor que escuta novos clientes
@@ -246,6 +279,7 @@ void TrigaServer::handleTCPClients(int clientSocket)
             auto data_local_spuChA = std::shared_ptr <SPU_DATA> (new SPU_DATA);
             auto data_local_spuChB = std::shared_ptr <SPU_DATA> (new SPU_DATA);
             auto data_local_plc    = std::shared_ptr <PLC_DATA> (new PLC_DATA);
+            std::shared_ptr<PJI_DATA> data_local_pji[PJI_COUNT];
             ALL_DATA data;
 
             if (send(sock.fd, csvHeader.c_str(), csvHeader.length(), MSG_NOSIGNAL) <= 0)
@@ -256,12 +290,20 @@ void TrigaServer::handleTCPClients(int clientSocket)
                 data_local_spuChA = data_global_spuCh[0].load();
                 data_local_spuChB = data_global_spuCh[1].load();
                 data_local_plc    = data_global_plc.load();
-                if (!data_local_spuChA || !data_local_spuChB || !data_local_plc)
+                bool pjiOk = true;
+                for (int i = 0; i < PJI_COUNT; ++i) {
+                    data_local_pji[i] = data_global_pji[i].load();
+                    if (!data_local_pji[i])
+                        pjiOk = false;
+                }
+                if (!data_local_spuChA || !data_local_spuChB || !data_local_plc || !pjiOk)
                     break;
 
                 data.SPU_CHA = *data_local_spuChA;
                 data.SPU_CHB = *data_local_spuChB;
                 data.PLC     = *data_local_plc;
+                for (int i = 0; i < PJI_COUNT; ++i)
+                    data.PJI[i] = *data_local_pji[i];
 
                 std::string line = genString(data);
 
@@ -484,5 +526,71 @@ std::string TrigaServer::genString(ALL_DATA all_data)
             all_data.SPU_CHB.TEST,
             all_data.SPU_CHB.XXXX
     );
+    std::string line = buffer;
+    for (int i = 0; i < PJI_COUNT; ++i)
+        line += formatPjiCsv(all_data.PJI[i]);
+    line += "\n";
+    return line;
+}
+
+void TrigaServer::readRs232PJI(int index)
+{
+    auto data_local = std::make_shared<PJI_DATA>();
+    while (true)
+    {
+        *data_local = pjiDev[index]->get_all();
+        data_global_pji[index].store(data_local);
+        if (data_local->STATE)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(errorIntervalPJI));
+            pjiDev[index]->tryConnect();
+        }
+    }
+}
+
+std::string TrigaServer::formatPjiCsv(const PJI_DATA& data)
+{
+    int_TIME t = decodeTime(data.TIME);
+    char buffer[2048];
+    snprintf(buffer, sizeof(buffer), pjiTemplateStr.c_str(),
+            data.STATE,
+            t.year,
+            t.month,
+            t.day,
+            t.hour,
+            t.minute,
+            t.second,
+            t.millisecond,
+            data.PV,
+            data.PV_max,
+            data.PV_min,
+            data.PV_raw,
+            data.tipo_entrada,
+            data.ponto_decimal,
+            data.escala_alta_hw,
+            data.escala_baixa_hw,
+            data.escala_alta_trab,
+            data.escala_baixa_trab,
+            data.status1,
+            data.status2,
+            data.raiz_quadrada,
+            data.unidade_F,
+            data.escrita_habilitada,
+            data.det_min,
+            data.det_max,
+            data.pv_fora_faixa,
+            data.entrada_nao_linear,
+            data.alarme1_cond,
+            data.alarme2_cond,
+            data.entrada_aberta,
+            data.sp_alarme1,
+            data.rearme_alarme1,
+            data.chave_alarme1,
+            data.sp_alarme2,
+            data.rearme_alarme2,
+            data.chave_alarme2,
+            data.pv_emergencia,
+            data.n_medias,
+            data.trava_teclado);
     return buffer;
 }

@@ -22,7 +22,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <libModbusSystematomSPU.h>
 #include <libOpcTrigaPLC.h>
+#include <libRs232EcilPJI.h>
 
+#include <array>
+#include <atomic>
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -30,6 +33,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <boost/asio.hpp>
 #include <json/json.h>
 #include <string>
+#include <vector>
+
+inline constexpr int PJI_COUNT = 5;
+inline constexpr const char* PJI_NAMES[PJI_COUNT] = {
+    "Poco", "EntPri", "SaiPri", "EntSec", "SaiSec"
+};
 
 //#define TestMax
 
@@ -40,6 +49,7 @@ struct ALL_DATA
     PLC_DATA PLC;
     SPU_DATA SPU_CHA;
     SPU_DATA SPU_CHB;
+    PJI_DATA PJI[PJI_COUNT]; // Poco, EntPri, SaiPri, EntSec, SaiSec
 };
 
 struct int_TIME
@@ -61,7 +71,10 @@ class TrigaServer
                     std::string clp_adress, 
                     std::string clp_conv_file, 
                     int error_interval_plc,
-                    int error_interval_spu);
+                    int error_interval_spu,
+                    std::array<std::string, PJI_COUNT> pji_ports,
+                    std::array<int, PJI_COUNT> pji_addrs,
+                    int error_interval_pji);
         ~TrigaServer();
 
         //Função que cria servidor TCP
@@ -73,19 +86,25 @@ class TrigaServer
         //Função para leitura dos valores de potência e periodo
         std::vector<float> readPP();
 
+        // Temperatura dos cinco PJ-I (Poco, EntPri, SaiPri, EntSec, SaiSec)
+        std::vector<float> readPJI();
+
     private:
         // Objetos para comunicação Modbus nas duas portas seriais
         libModbusSystematomSPU spuChA;
         libModbusSystematomSPU spuChB;
         libOpcTrigaPLC         plc;
+        std::unique_ptr<libRs232EcilPJI> pjiDev[PJI_COUNT];
 
         // Variáveis para armezenar o endereço da SPU A e B.
         std::string adressSpuA;
         std::string adressSpuB;
+        std::array<std::string, PJI_COUNT> adressPji;
 
         //Variáveis para armezenar o intervalo de reconexão em caso de erro
         int errorIntervalSPU;
         int errorIntervalPLC;
+        int errorIntervalPJI;
 
         // Cabeçalho CSV com nome[unidade], gerado após ler o arquivo de calibração.
         std::string csvHeader;
@@ -94,6 +113,13 @@ class TrigaServer
         std::atomic<std::shared_ptr<SPU_DATA>> data_global_spuCh[2] = {std::make_shared<SPU_DATA>(),
                                                                        std::make_shared<SPU_DATA>()};
         std::atomic<std::shared_ptr<PLC_DATA>> data_global_plc      =  std::make_shared<PLC_DATA>();
+        std::atomic<std::shared_ptr<PJI_DATA>> data_global_pji[PJI_COUNT] = {
+            std::make_shared<PJI_DATA>(),
+            std::make_shared<PJI_DATA>(),
+            std::make_shared<PJI_DATA>(),
+            std::make_shared<PJI_DATA>(),
+            std::make_shared<PJI_DATA>()
+        };
 
         // Função para gerar string JSON com todos os dados
         std::string genString(ALL_DATA all_data);
@@ -108,6 +134,8 @@ class TrigaServer
         void startReadThreads();
         void readModbusRTU(libModbusSystematomSPU& spu);
         void readOpcTCP(libOpcTrigaPLC& plc);
+        void readRs232PJI(int index);
+        std::string formatPjiCsv(const PJI_DATA& data);
 };
 
 #endif

@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <libModbusSystematomSPU.h>
 #include <libOpcTrigaPLC.h>
+#include <libRs232EcilPJI.h>
 
 namespace FormatCSV {
 
@@ -94,33 +95,53 @@ namespace FormatCSV {
             header += withUnit(formatSPU(row[0], "ChB"), unit) + ";";
         }
 
+        // 5. PJ-I: Poco, EntPri, SaiPri, EntSec, SaiSec
+        static const char* pjiNames[] = {"Poco", "EntPri", "SaiPri", "EntSec", "SaiSec"};
+        for (const char* name : pjiNames) {
+            for (const auto& row : PJI_DATA_MATRIX) {
+                const std::string unit = row.size() > 2 ? row[2] : "";
+                header += withUnit(formatSPU(row[0], name), unit) + ";";
+            }
+        }
+
         header += "\n";
         return header;
     }
 
-    std::string generateCSVTemplate() {
+    std::string generatePlcCSVTemplate() {
         std::string tmpl = "";
-
-        // 1. PLC_CONV
         for (const auto& row : PLC_DATA_MATRIX) {
             tmpl += row[1] + ";";
         }
-        
-        // 2. PLC_ORIG
-        for (const auto& row : PLC_DATA_MATRIX) {
-            tmpl += row[1] + ";";
-        }
-        
-        // 3. SPU_CHA
-        for (const auto& row : SPU_DATA_MATRIX) {
-            tmpl += row[1] + ";";
-        }
-        
-        // 4. SPU_CHB
-        for (const auto& row : SPU_DATA_MATRIX) {
-            tmpl += row[1] + ";";
-        }
+        return tmpl;
+    }
 
+    std::string generateSpuCSVTemplate() {
+        std::string tmpl = "";
+        for (const auto& row : SPU_DATA_MATRIX) {
+            tmpl += row[1] + ";";
+        }
+        return tmpl;
+    }
+
+    std::string generatePjiCSVTemplate() {
+        std::string tmpl = "";
+        for (const auto& row : PJI_DATA_MATRIX) {
+            tmpl += row[1] + ";";
+        }
+        return tmpl;
+    }
+
+    std::string generateCSVTemplate() {
+        std::string tmpl  = generatePlcCSVTemplate(); // PLC_CONV
+        tmpl += generatePlcCSVTemplate();             // PLC_ORIG
+        tmpl += generateSpuCSVTemplate();             // SPU_CHA
+        tmpl += generateSpuCSVTemplate();             // SPU_CHB
+        tmpl += generatePjiCSVTemplate();             // PJI_Poco
+        tmpl += generatePjiCSVTemplate();             // PJI_EntPri
+        tmpl += generatePjiCSVTemplate();             // PJI_SaiPri
+        tmpl += generatePjiCSVTemplate();             // PJI_EntSec
+        tmpl += generatePjiCSVTemplate();             // PJI_SaiSec
         tmpl += "\n";
         return tmpl;
     }

@@ -44,6 +44,7 @@ target_link_libraries(
   PRIVATE ${Boost_LIBRARIES}
           opcTrigaPLC
           modbusSystematomSPU
+          rs232EcilPJI
           PkgConfig::cxxopts
           PkgConfig::Modbus
           PkgConfig::SerialPort

@@ -41,6 +41,15 @@ namespace FormatCSV {
      */
     std::string generateCSVTemplate();
 
+    /** Tipos de um bloco PLC (CONV ou ORIG), sem \\n. */
+    std::string generatePlcCSVTemplate();
+
+    /** Tipos de um bloco SPU (ChA ou ChB), sem \\n. */
+    std::string generateSpuCSVTemplate();
+
+    /** Tipos de um PJ-I, sem \\n. */
+    std::string generatePjiCSVTemplate();
+
 }
 
 #endif // LIB_FORMAT_CSV_H

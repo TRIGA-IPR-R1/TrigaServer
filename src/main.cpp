@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //main.cpp
 #include "TrigaServer.h"
 #include <cxxopts.hpp>
+#include <array>
 #include <fstream>
 #include <string>
 #include <chrono>
@@ -49,6 +50,15 @@ struct CONFIG
     short       port_csv            = 1234;                       //Port of server CSV
     int         error_interval_spu  = 2;                          //Intervalo de espera para reconexão com SPU em caso de erro
     int         error_interval_plc  = 2;                          //Intervalo de espera para reconexão com PLC em caso de erro
+    std::array<std::string, PJI_COUNT> pji_port = {
+        "/dev/rs232/pjiPoco",
+        "/dev/rs232/pjiEntPri",
+        "/dev/rs232/pjiSaiPri",
+        "/dev/rs232/pjiEntSec",
+        "/dev/rs232/pjiSaiSec"
+    };
+    std::array<int, PJI_COUNT> pji_addr = {1, 1, 1, 1, 1};
+    int         error_interval_pji  = 2;                          //Intervalo de espera para reconexão com PJ-I
     int         monitor_interval    = 3;                          //Intervalo de dados para monitor variáveis
     bool        monitor_stdout      = 0;                          //Exibir monitor de variáveis na saída padrão (terminal)
     bool        close               = 0;                          //Variável auxiliar: fechar programa sem iniciar servidor
@@ -74,6 +84,17 @@ CONFIG configOptions(int argc, char* argv[])
         ("PORT_CSV",           "Set port for the server in CSV format",                         cxxopts::value<int>())
         ("INTERVAL_ERROR_SPU", "Set reconnect interval of SPU in case of error",                cxxopts::value<int>())
         ("INTERVAL_ERROR_PLC", "Set reconnect interval of PLC in case of error",                cxxopts::value<int>())
+        ("PJI_Poco",           "Set PJ-I Poço serial port",                                     cxxopts::value<std::string>())
+        ("PJI_EntPri",         "Set PJ-I entrada primário serial port",                         cxxopts::value<std::string>())
+        ("PJI_SaiPri",         "Set PJ-I saída primário serial port",                           cxxopts::value<std::string>())
+        ("PJI_EntSec",         "Set PJ-I entrada secundário serial port",                       cxxopts::value<std::string>())
+        ("PJI_SaiSec",         "Set PJ-I saída secundário serial port",                         cxxopts::value<std::string>())
+        ("PJI_Poco_ADDR",      "Set PJ-I Poço address (1-32)",                                  cxxopts::value<int>())
+        ("PJI_EntPri_ADDR",    "Set PJ-I entrada primário address (1-32)",                      cxxopts::value<int>())
+        ("PJI_SaiPri_ADDR",    "Set PJ-I saída primário address (1-32)",                        cxxopts::value<int>())
+        ("PJI_EntSec_ADDR",    "Set PJ-I entrada secundário address (1-32)",                    cxxopts::value<int>())
+        ("PJI_SaiSec_ADDR",    "Set PJ-I saída secundário address (1-32)",                      cxxopts::value<int>())
+        ("INTERVAL_ERROR_PJI", "Set reconnect interval of PJ-I in case of error",               cxxopts::value<int>())
         ("INTERVAL_MONITOR",   "Set interval of system monitor",                                cxxopts::value<int>());
     auto result = options.parse(argc, argv);
 
@@ -112,6 +133,17 @@ CONFIG configOptions(int argc, char* argv[])
     if (result.count("PORT_CSV"))            config.port_csv           = result["PORT_CSV"].as<int>();
     if (result.count("INTERVAL_ERROR_SPU"))  config.error_interval_spu = result["INTERVAL_ERROR_SPU"].as<int>();
     if (result.count("INTERVAL_ERROR_PLC"))  config.error_interval_plc = result["INTERVAL_ERROR_PLC"].as<int>();
+    if (result.count("PJI_Poco"))            config.pji_port[0]        = result["PJI_Poco"].as<std::string>();
+    if (result.count("PJI_EntPri"))          config.pji_port[1]        = result["PJI_EntPri"].as<std::string>();
+    if (result.count("PJI_SaiPri"))          config.pji_port[2]        = result["PJI_SaiPri"].as<std::string>();
+    if (result.count("PJI_EntSec"))          config.pji_port[3]        = result["PJI_EntSec"].as<std::string>();
+    if (result.count("PJI_SaiSec"))          config.pji_port[4]        = result["PJI_SaiSec"].as<std::string>();
+    if (result.count("PJI_Poco_ADDR"))       config.pji_addr[0]        = result["PJI_Poco_ADDR"].as<int>();
+    if (result.count("PJI_EntPri_ADDR"))     config.pji_addr[1]        = result["PJI_EntPri_ADDR"].as<int>();
+    if (result.count("PJI_SaiPri_ADDR"))     config.pji_addr[2]        = result["PJI_SaiPri_ADDR"].as<int>();
+    if (result.count("PJI_EntSec_ADDR"))     config.pji_addr[3]        = result["PJI_EntSec_ADDR"].as<int>();
+    if (result.count("PJI_SaiSec_ADDR"))     config.pji_addr[4]        = result["PJI_SaiSec_ADDR"].as<int>();
+    if (result.count("INTERVAL_ERROR_PJI"))  config.error_interval_pji = result["INTERVAL_ERROR_PJI"].as<int>();
     if (result.count("INTERVAL_MONITOR"))    config.monitor_interval   = result["INTERVAL_MONITOR"].as<int>();
 
     return config;
@@ -146,7 +178,10 @@ int main(int argc, char* argv[])
                        config.plc_adress,
                        config.plc_conv_file,
                        config.error_interval_spu,
-                       config.error_interval_plc);
+                       config.error_interval_plc,
+                       config.pji_port,
+                       config.pji_addr,
+                       config.error_interval_pji);
 
     //Cria thread do servidor que recebe novas conexões
     //Essa thread é capaz de criar 1 thread por cliente se conectar
@@ -176,6 +211,7 @@ int main(int argc, char* argv[])
         
         //Vetor contendo o estado de potência e período do reator, lido a partir de cada hardware
         std::vector<float> PP = server.readPP();
+        std::vector<float> pjiPv = server.readPJI();
         
         //String contendo a saída de log formatada
         //Obs: falta adicionar data-hora
@@ -187,11 +223,21 @@ int main(int argc, char* argv[])
                     screen += "SPU_A:    STATE="     + std::to_string(state[0]) + "\t\tPORT=" + config.spu_sp1        + "\n";
                     screen += "SPU_B:    STATE="     + std::to_string(state[1]) + "\t\tPORT=" + config.spu_sp2        + "\n";
                     screen += "PLC:      STATE="     + std::to_string(state[2]) + "\t\tPORT=" + config.plc_adress     + "\n";
+                    for (int i = 0; i < PJI_COUNT; ++i) {
+                        screen += std::string("PJI_") + PJI_NAMES[i] + ": STATE="
+                                  + std::to_string(state[3 + i])
+                                  + "\t\tPORT=" + config.pji_port[i]
+                                  + " ADDR=" + std::to_string(config.pji_addr[i]) + "\n";
+                    }
                     screen += "\nImportante Values\n";
                     screen += "SPU_A:    N="         + std::to_string(PP[0])    + "\t\tT="    + std::to_string(PP[1]) + "\n";
                     screen += "SPU_B:    N="         + std::to_string(PP[2])    + "\t\tT="    + std::to_string(PP[3]) + "\n";
                     screen += "PLC:      N="         + std::to_string(PP[4])    + "\t\tT="    + std::to_string(PP[6]) + "\n";
                     screen += "      N_log="         + std::to_string(PP[5])                                          + "\n";
+                    for (int i = 0; i < PJI_COUNT; ++i) {
+                        screen += std::string("PJI_") + PJI_NAMES[i] + ": PV="
+                                  + std::to_string(pjiPv[i]) + "\n";
+                    }
                     screen += "\n";
         
         //Escreva no arquivo
