@@ -46,6 +46,7 @@ target_link_libraries(
           opcTrigaPLC
           modbusSystematomSPU
           rs232EcilPJI
+          modbusNovusN1500FT
           PkgConfig::cxxopts
           PkgConfig::Modbus
           PkgConfig::SerialPort

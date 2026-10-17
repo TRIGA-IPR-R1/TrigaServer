@@ -59,6 +59,11 @@ struct CONFIG
     };
     std::array<int, PJI_COUNT> pji_addr = {1, 1, 1, 1, 1};
     int         error_interval_pji  = 2;                          //Intervalo de espera para reconexão com PJ-I
+    std::string n1500ft_port        = "/dev/modbus/n1500ftVasPri"; //N1500FT vazão primário
+    int         n1500ft_addr        = 1;
+    int         n1500ft_baud        = 9600;
+    char        n1500ft_parity      = 'N';
+    int         error_interval_n1500ft = 2;
     int         monitor_interval    = 3;                          //Intervalo de dados para monitor variáveis
     bool        monitor_stdout      = 0;                          //Exibir monitor de variáveis na saída padrão (terminal)
     bool        close               = 0;                          //Variável auxiliar: fechar programa sem iniciar servidor
@@ -95,6 +100,11 @@ CONFIG configOptions(int argc, char* argv[])
         ("PJI_EntSec_ADDR",    "Set PJ-I entrada secundário address (1-32)",                    cxxopts::value<int>())
         ("PJI_SaiSec_ADDR",    "Set PJ-I saída secundário address (1-32)",                      cxxopts::value<int>())
         ("INTERVAL_ERROR_PJI", "Set reconnect interval of PJ-I in case of error",               cxxopts::value<int>())
+        ("N1500FT_VasPri",     "Set N1500FT vazão primário serial port",                        cxxopts::value<std::string>())
+        ("N1500FT_VasPri_ADDR","Set N1500FT vazão primário address (1-247)",                    cxxopts::value<int>())
+        ("N1500FT_VasPri_BAUD","Set N1500FT vazão primário baud rate",                          cxxopts::value<int>())
+        ("N1500FT_VasPri_PARITY","Set N1500FT vazão primário parity (N|E|O)",                   cxxopts::value<std::string>())
+        ("INTERVAL_ERROR_N1500FT","Set reconnect interval of N1500FT in case of error",         cxxopts::value<int>())
         ("INTERVAL_MONITOR",   "Set interval of system monitor",                                cxxopts::value<int>());
     auto result = options.parse(argc, argv);
 
@@ -144,6 +154,15 @@ CONFIG configOptions(int argc, char* argv[])
     if (result.count("PJI_EntSec_ADDR"))     config.pji_addr[3]        = result["PJI_EntSec_ADDR"].as<int>();
     if (result.count("PJI_SaiSec_ADDR"))     config.pji_addr[4]        = result["PJI_SaiSec_ADDR"].as<int>();
     if (result.count("INTERVAL_ERROR_PJI"))  config.error_interval_pji = result["INTERVAL_ERROR_PJI"].as<int>();
+    if (result.count("N1500FT_VasPri"))      config.n1500ft_port       = result["N1500FT_VasPri"].as<std::string>();
+    if (result.count("N1500FT_VasPri_ADDR")) config.n1500ft_addr       = result["N1500FT_VasPri_ADDR"].as<int>();
+    if (result.count("N1500FT_VasPri_BAUD")) config.n1500ft_baud       = result["N1500FT_VasPri_BAUD"].as<int>();
+    if (result.count("N1500FT_VasPri_PARITY")) {
+        const std::string p = result["N1500FT_VasPri_PARITY"].as<std::string>();
+        if (!p.empty())
+            config.n1500ft_parity = p[0];
+    }
+    if (result.count("INTERVAL_ERROR_N1500FT")) config.error_interval_n1500ft = result["INTERVAL_ERROR_N1500FT"].as<int>();
     if (result.count("INTERVAL_MONITOR"))    config.monitor_interval   = result["INTERVAL_MONITOR"].as<int>();
 
     return config;
@@ -181,7 +200,12 @@ int main(int argc, char* argv[])
                        config.error_interval_plc,
                        config.pji_port,
                        config.pji_addr,
-                       config.error_interval_pji);
+                       config.error_interval_pji,
+                       config.n1500ft_port,
+                       config.n1500ft_addr,
+                       config.n1500ft_baud,
+                       config.n1500ft_parity,
+                       config.error_interval_n1500ft);
 
     //Cria thread do servidor que recebe novas conexões
     //Essa thread é capaz de criar 1 thread por cliente se conectar
@@ -212,6 +236,7 @@ int main(int argc, char* argv[])
         //Vetor contendo o estado de potência e período do reator, lido a partir de cada hardware
         std::vector<float> PP = server.readPP();
         std::vector<float> pjiPv = server.readPJI();
+        float n1500ftQ = server.readN1500FT();
         
         //String contendo a saída de log formatada
         //Obs: falta adicionar data-hora
@@ -229,6 +254,12 @@ int main(int argc, char* argv[])
                                   + "\t\tPORT=" + config.pji_port[i]
                                   + " ADDR=" + std::to_string(config.pji_addr[i]) + "\n";
                     }
+                    screen += std::string("N1500FT_") + N1500FT_VASPRI_NAME + ": STATE="
+                              + std::to_string(state[3 + PJI_COUNT])
+                              + "\t\tPORT=" + config.n1500ft_port
+                              + " ADDR=" + std::to_string(config.n1500ft_addr)
+                              + " " + std::to_string(config.n1500ft_baud)
+                              + " 8" + config.n1500ft_parity + "1\n";
                     screen += "\nImportante Values\n";
                     screen += "SPU_A:    N="         + std::to_string(PP[0])    + "\t\tT="    + std::to_string(PP[1]) + "\n";
                     screen += "SPU_B:    N="         + std::to_string(PP[2])    + "\t\tT="    + std::to_string(PP[3]) + "\n";
@@ -238,6 +269,8 @@ int main(int argc, char* argv[])
                         screen += std::string("PJI_") + PJI_NAMES[i] + ": PV="
                                   + std::to_string(pjiPv[i]) + "\n";
                     }
+                    screen += std::string("N1500FT_") + N1500FT_VASPRI_NAME + ": Q="
+                              + std::to_string(n1500ftQ) + "\n";
                     screen += "\n";
         
         //Escreva no arquivo

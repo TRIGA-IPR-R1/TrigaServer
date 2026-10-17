@@ -50,6 +50,9 @@ namespace FormatCSV {
     /** Tipos de um PJ-I, sem \\n. */
     std::string generatePjiCSVTemplate();
 
+    /** Tipos de um N1500FT, sem \\n. */
+    std::string generateN1500ftCSVTemplate();
+
 }
 
 #endif // LIB_FORMAT_CSV_H

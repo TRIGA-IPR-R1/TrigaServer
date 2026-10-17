@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <libModbusSystematomSPU.h>
 #include <libOpcTrigaPLC.h>
 #include <libRs232EcilPJI.h>
+#include <libModbusNovusN1500FT.h>
 
 #include <array>
 #include <atomic>
@@ -39,6 +40,7 @@ inline constexpr int PJI_COUNT = 5;
 inline constexpr const char* PJI_NAMES[PJI_COUNT] = {
     "Poco", "EntPri", "SaiPri", "EntSec", "SaiSec"
 };
+inline constexpr const char* N1500FT_VASPRI_NAME = "VasPri";
 
 //#define TestMax
 
@@ -50,6 +52,7 @@ struct ALL_DATA
     SPU_DATA SPU_CHA;
     SPU_DATA SPU_CHB;
     PJI_DATA PJI[PJI_COUNT]; // Poco, EntPri, SaiPri, EntSec, SaiSec
+    N1500FT_DATA N1500FT_VasPri;
 };
 
 struct int_TIME
@@ -74,7 +77,12 @@ class TrigaServer
                     int error_interval_spu,
                     std::array<std::string, PJI_COUNT> pji_ports,
                     std::array<int, PJI_COUNT> pji_addrs,
-                    int error_interval_pji);
+                    int error_interval_pji,
+                    std::string n1500ft_port,
+                    int n1500ft_addr,
+                    int n1500ft_baud,
+                    char n1500ft_parity,
+                    int error_interval_n1500ft);
         ~TrigaServer();
 
         //Função que cria servidor TCP
@@ -89,22 +97,28 @@ class TrigaServer
         // Temperatura dos cinco PJ-I (Poco, EntPri, SaiPri, EntSec, SaiSec)
         std::vector<float> readPJI();
 
+        // Vazão instantânea do N1500FT primário
+        float readN1500FT();
+
     private:
         // Objetos para comunicação Modbus nas duas portas seriais
         libModbusSystematomSPU spuChA;
         libModbusSystematomSPU spuChB;
         libOpcTrigaPLC         plc;
         std::unique_ptr<libRs232EcilPJI> pjiDev[PJI_COUNT];
+        std::unique_ptr<libModbusNovusN1500FT> n1500ftVasPri;
 
         // Variáveis para armezenar o endereço da SPU A e B.
         std::string adressSpuA;
         std::string adressSpuB;
         std::array<std::string, PJI_COUNT> adressPji;
+        std::string adressN1500ft;
 
         //Variáveis para armezenar o intervalo de reconexão em caso de erro
         int errorIntervalSPU;
         int errorIntervalPLC;
         int errorIntervalPJI;
+        int errorIntervalN1500FT;
 
         // Cabeçalho CSV com nome[unidade], gerado após ler o arquivo de calibração.
         std::string csvHeader;
@@ -120,6 +134,8 @@ class TrigaServer
             std::make_shared<PJI_DATA>(),
             std::make_shared<PJI_DATA>()
         };
+        std::atomic<std::shared_ptr<N1500FT_DATA>> data_global_n1500ft =
+            std::make_shared<N1500FT_DATA>();
 
         // Função para gerar string JSON com todos os dados
         std::string genString(ALL_DATA all_data);
@@ -135,7 +151,9 @@ class TrigaServer
         void readModbusRTU(libModbusSystematomSPU& spu);
         void readOpcTCP(libOpcTrigaPLC& plc);
         void readRs232PJI(int index);
+        void readModbusN1500FT();
         std::string formatPjiCsv(const PJI_DATA& data);
+        std::string formatN1500ftCsv(const N1500FT_DATA& data);
 };
 
 #endif

@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <libModbusSystematomSPU.h>
 #include <libOpcTrigaPLC.h>
 #include <libRs232EcilPJI.h>
+#include <libModbusNovusN1500FT.h>
 
 namespace FormatCSV {
 
@@ -104,6 +105,12 @@ namespace FormatCSV {
             }
         }
 
+        // 6. N1500FT vazão primário
+        for (const auto& row : N1500FT_DATA_MATRIX) {
+            const std::string unit = row.size() > 2 ? row[2] : "";
+            header += withUnit(formatSPU(row[0], "VasPri"), unit) + ";";
+        }
+
         header += "\n";
         return header;
     }
@@ -132,6 +139,14 @@ namespace FormatCSV {
         return tmpl;
     }
 
+    std::string generateN1500ftCSVTemplate() {
+        std::string tmpl = "";
+        for (const auto& row : N1500FT_DATA_MATRIX) {
+            tmpl += row[1] + ";";
+        }
+        return tmpl;
+    }
+
     std::string generateCSVTemplate() {
         std::string tmpl  = generatePlcCSVTemplate(); // PLC_CONV
         tmpl += generatePlcCSVTemplate();             // PLC_ORIG
@@ -142,6 +157,7 @@ namespace FormatCSV {
         tmpl += generatePjiCSVTemplate();             // PJI_SaiPri
         tmpl += generatePjiCSVTemplate();             // PJI_EntSec
         tmpl += generatePjiCSVTemplate();             // PJI_SaiSec
+        tmpl += generateN1500ftCSVTemplate();         // N1500FT_VasPri
         tmpl += "\n";
         return tmpl;
     }
