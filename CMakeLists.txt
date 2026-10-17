@@ -31,6 +31,7 @@ set(TRIGASERVER_SRC ${PROJECT_SOURCE_DIR}/src/main.cpp
 add_subdirectory(libs/libOpcTrigaPLC)
 add_subdirectory(libs/libModbusSystematomSPU)
 add_subdirectory(libs/libRs232EcilPJI)
+add_subdirectory(libs/libModbusNovusN1500FT)
 
 add_executable(trigaserver ${TRIGASERVER_SRC})
 
